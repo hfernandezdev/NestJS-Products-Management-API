@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { User } from './user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
@@ -13,7 +14,11 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const user = this.userRepository.create(createUserDto);
+    const hashedPassword = await this.hashPassword(createUserDto.password);
+    const user = this.userRepository.create({
+      ...createUserDto,
+      password: hashedPassword,
+    });
     return this.userRepository.save(user);
   }
 
@@ -26,15 +31,25 @@ export class UsersService {
   }
 
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { id: id } });
-    if (!user) {
+    const updateData: Partial<User> = { ...updateUserDto };
+    if (updateUserDto.password) {
+      updateData.password = await this.hashPassword(updateUserDto.password);
+    }
+
+    await this.userRepository.update(id, updateData);
+    const updatedUser = await this.userRepository.findOne({ where: { id } });
+    if (!updatedUser) {
       throw new NotFoundException('User not found');
     }
-    const updatedUser = Object.assign(user, updateUserDto);
-    return this.userRepository.save(updatedUser);
+    return updatedUser;
   }
 
   async remove(id: number): Promise<void> {
     await this.userRepository.delete(id);
+  }
+
+  private async hashPassword(password: string): Promise<string> {
+    const saltRounds = 10;
+    return bcrypt.hash(password, saltRounds);
   }
 }
