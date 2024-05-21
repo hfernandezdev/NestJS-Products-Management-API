@@ -30,6 +30,10 @@ export class UsersService {
     return this.userRepository.findOne({ where: { id: id } });
   }
 
+  async findOneByUsername(username: string): Promise<User | undefined> {
+    return this.userRepository.findOne({ where: { username: username } });
+  }
+
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
     const updateData: Partial<User> = { ...updateUserDto };
     if (updateUserDto.password) {
